@@ -141,6 +141,22 @@
                             </label>
                             <p class="text-xs text-gray-500 mt-1">Loads image progressively in browsers</p>
                         </div>
+
+                        <div>
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" id="optimizeCoding" class="form-checkbox h-5 w-5 text-blue-600 rounded" checked>
+                                <span class="font-medium text-gray-700">Optimize Huffman Coding</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1">Improves compression with optimized Huffman tables</p>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" id="arithmeticCoding" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                                <span class="font-medium text-gray-700">Arithmetic Coding</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1">May yield smaller files but not supported by all decoders</p>
+                        </div>
                     </div>
 
                     <!-- Advanced Settings -->
@@ -153,6 +169,7 @@
                                 <option value="prophoto-rgb">ProPhoto RGB (Professional)</option>
                                 <option value="none">None (Preserve Original)</option>
                             </select>
+                            <p class="text-xs text-gray-500 mt-1">Note: Client-side color profile conversion is limited in browsers.</p>
                         </div>
 
                         <div>
@@ -172,6 +189,44 @@
                                 <option value="int" selected>Integer (Fast)</option>
                                 <option value="fast">Fast (Lower Quality)</option>
                             </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="quantTable" class="block font-medium text-gray-700 mb-2">Quantization Table</label>
+                                <select id="quantTable" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="0">0 - JPEG Annex K</option>
+                                    <option value="1">1 - Flat</option>
+                                    <option value="2" selected>2 - MS-SSIM tuned</option>
+                                    <option value="3">3 - ImageMagick (Robidoux)</option>
+                                    <option value="4">4 - PSNR-HVS tuned</option>
+                                    <option value="5">5 - Klein/Silverstein/Carney</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="smoothing" class="block font-medium text-gray-700 mb-2">Smoothing</label>
+                                <input type="number" id="smoothing" min="0" max="100" value="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">0 = none, higher values blur to hide artifacts</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" id="trellis" class="form-checkbox h-5 w-5 text-blue-600 rounded" checked>
+                                <span class="font-medium text-gray-700">Trellis Quantization</span>
+                            </label>
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" id="trellisMultipass" class="form-checkbox h-5 w-5 text-blue-600 rounded" checked>
+                                <span class="font-medium text-gray-700">Trellis Multipass</span>
+                            </label>
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" id="overshootDeringing" class="form-checkbox h-5 w-5 text-blue-600 rounded" checked>
+                                <span class="font-medium text-gray-700">Overshoot Deringing</span>
+                            </label>
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" id="optimizeScans" class="form-checkbox h-5 w-5 text-blue-600 rounded" checked>
+                                <span class="font-medium text-gray-700">Optimize Scans (progressive)</span>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -282,10 +337,19 @@
             const percentageContainer = document.getElementById('percentageContainer');
             const dimensionsContainer = document.getElementById('dimensionsContainer');
             const longestEdgeContainer = document.getElementById('longestEdgeContainer');
+            const optimizeCodingCheckbox = document.getElementById('optimizeCoding');
+            const arithmeticCodingCheckbox = document.getElementById('arithmeticCoding');
+            const trellisCheckbox = document.getElementById('trellis');
+            const trellisMultipassCheckbox = document.getElementById('trellisMultipass');
+            const overshootDeringingCheckbox = document.getElementById('overshootDeringing');
+            const optimizeScansCheckbox = document.getElementById('optimizeScans');
+            const smoothingInput = document.getElementById('smoothing');
+            const quantTableSelect = document.getElementById('quantTable');
 
             // State
             let files = [];
             let convertedFiles = [];
+            let mozjpegInstancePromise = null;
 
             // Event Listeners
             browseBtn.addEventListener('click', () => fileInput.click());
@@ -304,6 +368,16 @@
             updateResizeUI();
 
             // Functions
+            function ensureMozjpegLoaded() {
+                if (!mozjpegInstancePromise) {
+                    mozjpegInstancePromise = (async () => {
+                        const mod = await import('https://unpkg.com/@squoosh/codecs@0.9.0/dist/browser/mozjpeg/mozjpeg.js');
+                        return await mod.default();
+                    })();
+                }
+                return mozjpegInstancePromise;
+            }
+
             function handleFileSelect(e) {
                 const newFiles = Array.from(e.target.files).filter(file => 
                     file.type === 'image/png' || file.name.toLowerCase().endsWith('.png')
@@ -510,6 +584,27 @@
                 }
             }
 
+            function mapSubsamplingToMozjpeg(value) {
+                // mozjpeg expects chroma_subsample as: 0=4:4:4, 1=4:2:2, 2=4:2:0, 3=4:1:1
+                switch (value) {
+                    case '4:4:4': return 0;
+                    case '4:2:2': return 1;
+                    case '4:2:0': return 2;
+                    case '4:1:1': return 3;
+                    default: return 2;
+                }
+            }
+
+            function mapDctMethodToMozjpeg(value) {
+                // mozjpeg expects 0=int, 1=fast, 2=float
+                switch (value) {
+                    case 'int': return 0;
+                    case 'fast': return 1;
+                    case 'float': return 2;
+                    default: return 0;
+                }
+            }
+
             async function convertFiles() {
                 if (files.length === 0) return;
                 
@@ -538,7 +633,7 @@
                     
                     reader.onload = function(e) {
                         const img = new Image();
-                        img.onload = function() {
+                        img.onload = async function() {
                             // Get conversion settings
                             const quality = losslessCheckbox.checked ? 100 : parseInt(qualitySlider.value);
                             const isProgressive = progressiveCheckbox.checked;
@@ -580,9 +675,8 @@
                             canvas.height = newHeight;
                             const ctx = canvas.getContext('2d');
                             
-                            // Apply color profile (simplified for demo)
+                            // Apply color profile (placeholder; real conversion not supported in-browser)
                             if (colorProfile !== 'none') {
-                                // In a real app, you would apply proper color profile conversion
                                 ctx.fillStyle = 'white';
                                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                             }
@@ -590,43 +684,54 @@
                             // Draw image (with resizing if needed)
                             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                             
-                            // Convert to JPEG
-                            const mimeType = 'image/jpeg';
-                            let qualityOption = quality / 100;
+                            // Prepare raw image data for MozJPEG
+                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                             
-                            // Additional JPEG options (these would be used by a more advanced library)
-                            const jpegOptions = {
-                                quality: qualityOption,
+                            // Build MozJPEG options
+                            const mozjpegOptions = {
+                                quality: quality,
+                                baseline: !isProgressive,
+                                arithmetic: arithmeticCodingCheckbox.checked,
                                 progressive: isProgressive,
-                                // These would be used by a library like MozJPEG
-                                chromaSubsampling: subsampling,
-                                dctMethod: dctMethod,
-                                // colorSpace: colorProfile === 'none' ? undefined : colorProfile
+                                optimize_coding: optimizeCodingCheckbox.checked,
+                                smoothing: Math.max(0, Math.min(100, parseInt(smoothingInput.value) || 0)),
+                                quant_table: parseInt(quantTableSelect.value) || 2,
+                                trellis_multipass: trellisMultipassCheckbox.checked,
+                                trellis: trellisCheckbox.checked,
+                                overshoot_deringing: overshootDeringingCheckbox.checked,
+                                optimize_scans: optimizeScansCheckbox.checked,
+                                chroma_subsample: mapSubsamplingToMozjpeg(subsampling),
+                                dct_method: mapDctMethodToMozjpeg(dctMethod)
                             };
                             
-                            // Convert to JPEG (simplified - in a real app you might use a library like MozJPEG)
-                            canvas.toBlob((blob) => {
-                                const convertedFile = new File([blob], file.name.replace(/\.png$/i, '.jpg') || file.name + '.jpg', {
-                                    type: mimeType,
-                                    lastModified: Date.now()
-                                });
-                                
-                                resolve({
-                                    original: file,
-                                    converted: convertedFile,
-                                    originalSize: file.size,
-                                    convertedSize: blob.size,
-                                    width: newWidth,
-                                    height: newHeight,
-                                    quality: quality,
-                                    settings: {
-                                        progressive: isProgressive,
-                                        colorProfile: colorProfile,
-                                        subsampling: subsampling,
-                                        dctMethod: dctMethod
-                                    }
-                                });
-                            }, mimeType, qualityOption);
+                            // Encode with MozJPEG
+                            const mozjpeg = await ensureMozjpegLoaded();
+                            const encoded = await mozjpeg.encode(imageData, mozjpegOptions);
+                            const binary = encoded instanceof Uint8Array ? encoded : (encoded && encoded.binary) ? encoded.binary : new Uint8Array();
+                            const mimeType = 'image/jpeg';
+                            const blob = new Blob([binary], { type: mimeType });
+                            
+                            const convertedFile = new File([blob], file.name.replace(/\.png$/i, '.jpg') || file.name + '.jpg', {
+                                type: mimeType,
+                                lastModified: Date.now()
+                            });
+                            
+                            resolve({
+                                original: file,
+                                converted: convertedFile,
+                                originalSize: file.size,
+                                convertedSize: blob.size,
+                                width: newWidth,
+                                height: newHeight,
+                                quality: quality,
+                                settings: {
+                                    progressive: isProgressive,
+                                    colorProfile: colorProfile,
+                                    subsampling: subsampling,
+                                    dctMethod: dctMethod,
+                                    mozjpeg: mozjpegOptions
+                                }
+                            });
                         };
                         img.src = e.target.result;
                     };
@@ -714,6 +819,14 @@
                 document.getElementById('colorProfile').value = 'srgb';
                 document.getElementById('subsampling').value = '4:2:0';
                 document.getElementById('dctMethod').value = 'int';
+                document.getElementById('quantTable').value = '2';
+                document.getElementById('smoothing').value = '0';
+                document.getElementById('optimizeCoding').checked = true;
+                document.getElementById('arithmeticCoding').checked = false;
+                document.getElementById('trellis').checked = true;
+                document.getElementById('trellisMultipass').checked = true;
+                document.getElementById('overshootDeringing').checked = true;
+                document.getElementById('optimizeScans').checked = true;
                 resizeMode.value = 'none';
                 updateResizeUI();
             }
