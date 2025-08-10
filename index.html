@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced PNG to JPEG Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dropzone {
+            border: 2px dashed #9ca3af;
+            transition: all 0.3s ease;
+        }
+        .dropzone.active {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            outline: none;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        .range-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        .preview-container {
+            transition: all 0.3s ease;
+        }
+        .preview-container:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Advanced PNG to JPEG Converter</h1>
+            <p class="text-gray-600 max-w-2xl mx-auto">Convert your PNG images to JPEG with full control over quality, compression, and color profiles.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Upload Section -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-6">
+                    <div id="dropzone" class="dropzone rounded-lg p-10 text-center cursor-pointer mb-6">
+                        <div class="flex flex-col items-center justify-center">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-4"></i>
+                            <h3 class="text-xl font-semibold text-gray-700 mb-2">Drag & Drop PNG Files Here</h3>
+                            <p class="text-gray-500 mb-4">or click to browse your files</p>
+                            <input type="file" id="fileInput" class="hidden" accept="image/png" multiple>
+                            <button id="browseBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition duration-200">
+                                Select Files
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="fileList" class="hidden border-t pt-4">
+                        <h4 class="font-medium text-gray-700 mb-3">Selected Files</h4>
+                        <ul id="selectedFiles" class="space-y-2 max-h-60 overflow-y-auto"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Preview</h3>
+                    <div id="previewContainer" class="preview-container bg-gray-100 rounded-lg flex items-center justify-center h-48 mb-4">
+                        <div class="text-center text-gray-500">
+                            <i class="fas fa-image text-4xl mb-2"></i>
+                            <p>Image preview will appear here</p>
+                        </div>
+                    </div>
+                    <div id="previewInfo" class="hidden text-sm text-gray-600 space-y-1">
+                        <div class="flex justify-between">
+                            <span>Original Size:</span>
+                            <span id="originalSize">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Estimated Output:</span>
+                            <span id="estimatedSize">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Dimensions:</span>
+                            <span id="imageDimensions">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversion Options -->
+        <div class="mt-8 bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="p-6">
+                <h3 class="text-xl font-semibold text-gray-700 mb-6">Conversion Settings</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Quality Settings -->
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="quality" class="font-medium text-gray-700">Quality</label>
+                                <span id="qualityValue" class="text-blue-600 font-medium">85%</span>
+                            </div>
+                            <input type="range" id="quality" min="1" max="100" value="85" class="range-slider">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>Low</span>
+                                <span>High</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" id="lossless" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                                <span class="font-medium text-gray-700">Lossless Conversion</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1">Preserves maximum quality (larger file size)</p>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center space-x-3">
+                                <input type="checkbox" id="progressive" class="form-checkbox h-5 w-5 text-blue-600 rounded" checked>
+                                <span class="font-medium text-gray-700">Progressive JPEG</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1">Loads image progressively in browsers</p>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="space-y-6">
+                        <div>
+                            <label for="colorProfile" class="block font-medium text-gray-700 mb-2">Color Profile</label>
+                            <select id="colorProfile" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="srgb">sRGB (Standard Web)</option>
+                                <option value="adobe-rgb">Adobe RGB (Wider Gamut)</option>
+                                <option value="prophoto-rgb">ProPhoto RGB (Professional)</option>
+                                <option value="none">None (Preserve Original)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="subsampling" class="block font-medium text-gray-700 mb-2">Chroma Subsampling</label>
+                            <select id="subsampling" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="4:4:4">4:4:4 (Best Quality)</option>
+                                <option value="4:2:2">4:2:2 (Balanced)</option>
+                                <option value="4:2:0" selected>4:2:0 (Standard)</option>
+                                <option value="4:1:1">4:1:1 (High Compression)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="dctMethod" class="block font-medium text-gray-700 mb-2">DCT Method</label>
+                            <select id="dctMethod" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="float">Float (Best Quality)</option>
+                                <option value="int" selected>Integer (Fast)</option>
+                                <option value="fast">Fast (Lower Quality)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resize Options -->
+                <div class="mt-8 pt-6 border-t">
+                    <h4 class="font-medium text-gray-700 mb-4">Resize Options</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="resizeMode" class="block font-medium text-gray-700 mb-2">Mode</label>
+                            <select id="resizeMode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="none" selected>Don't Resize</option>
+                                <option value="percentage">Percentage</option>
+                                <option value="dimensions">Specific Dimensions</option>
+                                <option value="longest-edge">Longest Edge</option>
+                            </select>
+                        </div>
+                        <div id="percentageContainer" class="hidden">
+                            <label for="resizePercentage" class="block font-medium text-gray-700 mb-2">Percentage</label>
+                            <div class="flex items-center">
+                                <input type="number" id="resizePercentage" min="1" max="500" value="100" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <span class="ml-2">%</span>
+                            </div>
+                        </div>
+                        <div id="dimensionsContainer" class="hidden md:col-span-2">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="resizeWidth" class="block font-medium text-gray-700 mb-2">Width</label>
+                                    <div class="flex items-center">
+                                        <input type="number" id="resizeWidth" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <span class="ml-2">px</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="resizeHeight" class="block font-medium text-gray-700 mb-2">Height</label>
+                                    <div class="flex items-center">
+                                        <input type="number" id="resizeHeight" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <span class="ml-2">px</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="longestEdgeContainer" class="hidden">
+                            <label for="longestEdgeValue" class="block font-medium text-gray-700 mb-2">Longest Edge</label>
+                            <div class="flex items-center">
+                                <input type="number" id="longestEdgeValue" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <span class="ml-2">px</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="flex items-center space-x-3">
+                            <input type="checkbox" id="maintainAspect" class="form-checkbox h-5 w-5 text-blue-600 rounded" checked>
+                            <span class="font-medium text-gray-700">Maintain Aspect Ratio</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+            <button id="convertBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <i class="fas fa-sync-alt mr-2"></i> Convert All Files
+            </button>
+            <button id="downloadAllBtn" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition duration-200 flex items-center justify-center hidden">
+                <i class="fas fa-download mr-2"></i> Download All
+            </button>
+            <button id="resetBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-8 py-3 rounded-lg font-medium transition duration-200 flex items-center justify-center">
+                <i class="fas fa-redo mr-2"></i> Reset
+            </button>
+        </div>
+
+        <!-- Conversion Results -->
+        <div id="resultsSection" class="mt-8 hidden">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Conversion Results</h3>
+                    <div id="resultsList" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('fileInput');
+            const browseBtn = document.getElementById('browseBtn');
+            const fileList = document.getElementById('fileList');
+            const selectedFiles = document.getElementById('selectedFiles');
+            const previewContainer = document.getElementById('previewContainer');
+            const previewInfo = document.getElementById('previewInfo');
+            const originalSize = document.getElementById('originalSize');
+            const estimatedSize = document.getElementById('estimatedSize');
+            const imageDimensions = document.getElementById('imageDimensions');
+            const qualitySlider = document.getElementById('quality');
+            const qualityValue = document.getElementById('qualityValue');
+            const losslessCheckbox = document.getElementById('lossless');
+            const progressiveCheckbox = document.getElementById('progressive');
+            const convertBtn = document.getElementById('convertBtn');
+            const downloadAllBtn = document.getElementById('downloadAllBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsList = document.getElementById('resultsList');
+            const resizeMode = document.getElementById('resizeMode');
+            const percentageContainer = document.getElementById('percentageContainer');
+            const dimensionsContainer = document.getElementById('dimensionsContainer');
+            const longestEdgeContainer = document.getElementById('longestEdgeContainer');
+
+            // State
+            let files = [];
+            let convertedFiles = [];
+
+            // Event Listeners
+            browseBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+            dropzone.addEventListener('dragover', handleDragOver);
+            dropzone.addEventListener('dragleave', handleDragLeave);
+            dropzone.addEventListener('drop', handleDrop);
+            qualitySlider.addEventListener('input', updateQualityValue);
+            losslessCheckbox.addEventListener('change', toggleLossless);
+            convertBtn.addEventListener('click', convertFiles);
+            downloadAllBtn.addEventListener('click', downloadAllFiles);
+            resetBtn.addEventListener('click', resetConverter);
+            resizeMode.addEventListener('change', updateResizeUI);
+
+            // Initialize
+            updateResizeUI();
+
+            // Functions
+            function handleFileSelect(e) {
+                const newFiles = Array.from(e.target.files).filter(file => 
+                    file.type === 'image/png' || file.name.toLowerCase().endsWith('.png')
+                );
+                
+                if (newFiles.length > 0) {
+                    files = [...files, ...newFiles];
+                    updateFileList();
+                    updatePreview();
+                    updateConvertButton();
+                } else {
+                    alert('Please select PNG files only.');
+                }
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('active');
+            }
+
+            function handleDragLeave(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('active');
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('active');
+                
+                const newFiles = Array.from(e.dataTransfer.files).filter(file => 
+                    file.type === 'image/png' || file.name.toLowerCase().endsWith('.png')
+                );
+                
+                if (newFiles.length > 0) {
+                    files = [...files, ...newFiles];
+                    updateFileList();
+                    updatePreview();
+                    updateConvertButton();
+                } else {
+                    alert('Please drop PNG files only.');
+                }
+            }
+
+            function updateFileList() {
+                if (files.length === 0) {
+                    fileList.classList.add('hidden');
+                    return;
+                }
+                
+                fileList.classList.remove('hidden');
+                selectedFiles.innerHTML = '';
+                
+                files.forEach((file, index) => {
+                    const fileSize = formatFileSize(file.size);
+                    const listItem = document.createElement('li');
+                    listItem.className = 'flex items-center justify-between bg-gray-50 p-3 rounded-lg';
+                    listItem.innerHTML = `
+                        <div class="flex items-center truncate">
+                            <i class="fas fa-file-image text-blue-500 mr-3"></i>
+                            <span class="truncate">${file.name}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-gray-500 text-sm mr-3">${fileSize}</span>
+                            <button class="text-red-500 hover:text-red-700 remove-file" data-index="${index}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                    selectedFiles.appendChild(listItem);
+                });
+                
+                // Add event listeners to remove buttons
+                document.querySelectorAll('.remove-file').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        files.splice(index, 1);
+                        updateFileList();
+                        updatePreview();
+                        updateConvertButton();
+                    });
+                });
+            }
+
+            function updatePreview() {
+                if (files.length === 0) {
+                    previewContainer.innerHTML = `
+                        <div class="text-center text-gray-500">
+                            <i class="fas fa-image text-4xl mb-2"></i>
+                            <p>Image preview will appear here</p>
+                        </div>
+                    `;
+                    previewInfo.classList.add('hidden');
+                    return;
+                }
+                
+                const file = files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        previewContainer.innerHTML = '';
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.min(400, img.width);
+                        canvas.height = Math.min(300, img.height);
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        previewContainer.appendChild(canvas);
+                        
+                        // Update file info
+                        originalSize.textContent = formatFileSize(file.size);
+                        estimatedSize.textContent = calculateEstimatedSize(file.size, img.width, img.height);
+                        imageDimensions.textContent = `${img.width} × ${img.height} px`;
+                        previewInfo.classList.remove('hidden');
+                    };
+                    img.src = e.target.result;
+                };
+                
+                reader.readAsDataURL(file);
+            }
+
+            function calculateEstimatedSize(originalSize, width, height) {
+                const quality = losslessCheckbox.checked ? 100 : parseInt(qualitySlider.value);
+                const sizeFactor = quality / 100;
+                
+                // Very rough estimation (JPEG is typically 5-20% of PNG size)
+                let estimated = originalSize * (0.1 + (0.15 * (1 - sizeFactor)));
+                
+                // Adjust for dimensions if resizing
+                const resizeModeValue = resizeMode.value;
+                let resizeFactor = 1;
+                
+                if (resizeModeValue === 'percentage') {
+                    const percentage = parseInt(document.getElementById('resizePercentage').value) || 100;
+                    resizeFactor = (percentage / 100) * (percentage / 100);
+                } else if (resizeModeValue === 'dimensions') {
+                    const newWidth = parseInt(document.getElementById('resizeWidth').value) || width;
+                    const newHeight = parseInt(document.getElementById('resizeHeight').value) || height;
+                    resizeFactor = (newWidth / width) * (newHeight / height);
+                } else if (resizeModeValue === 'longest-edge') {
+                    const longestEdge = Math.max(width, height);
+                    const newLongestEdge = parseInt(document.getElementById('longestEdgeValue').value) || longestEdge;
+                    resizeFactor = (newLongestEdge / longestEdge) * (newLongestEdge / longestEdge);
+                }
+                
+                estimated *= resizeFactor;
+                
+                return formatFileSize(estimated);
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function updateQualityValue() {
+                if (losslessCheckbox.checked) return;
+                qualityValue.textContent = qualitySlider.value + '%';
+                if (files.length > 0) {
+                    updatePreview(); // Recalculate estimated size
+                }
+            }
+
+            function toggleLossless() {
+                if (losslessCheckbox.checked) {
+                    qualitySlider.value = 100;
+                    qualityValue.textContent = '100%';
+                    qualitySlider.disabled = true;
+                } else {
+                    qualitySlider.disabled = false;
+                    qualityValue.textContent = qualitySlider.value + '%';
+                }
+                if (files.length > 0) {
+                    updatePreview(); // Recalculate estimated size
+                }
+            }
+
+            function updateConvertButton() {
+                convertBtn.disabled = files.length === 0;
+            }
+
+            function updateResizeUI() {
+                const mode = resizeMode.value;
+                percentageContainer.classList.add('hidden');
+                dimensionsContainer.classList.add('hidden');
+                longestEdgeContainer.classList.add('hidden');
+                
+                if (mode === 'percentage') {
+                    percentageContainer.classList.remove('hidden');
+                } else if (mode === 'dimensions') {
+                    dimensionsContainer.classList.remove('hidden');
+                } else if (mode === 'longest-edge') {
+                    longestEdgeContainer.classList.remove('hidden');
+                }
+                
+                if (files.length > 0) {
+                    updatePreview(); // Recalculate estimated size
+                }
+            }
+
+            async function convertFiles() {
+                if (files.length === 0) return;
+                
+                convertBtn.disabled = true;
+                convertBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Converting...';
+                
+                resultsSection.classList.remove('hidden');
+                resultsList.innerHTML = '';
+                
+                convertedFiles = [];
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const result = await convertSingleFile(file);
+                    convertedFiles.push(result);
+                    addResultToUI(result, i);
+                }
+                
+                convertBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Conversion Complete';
+                downloadAllBtn.classList.remove('hidden');
+            }
+
+            async function convertSingleFile(file) {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            // Get conversion settings
+                            const quality = losslessCheckbox.checked ? 100 : parseInt(qualitySlider.value);
+                            const isProgressive = progressiveCheckbox.checked;
+                            const colorProfile = document.getElementById('colorProfile').value;
+                            const subsampling = document.getElementById('subsampling').value;
+                            const dctMethod = document.getElementById('dctMethod').value;
+                            
+                            // Handle resizing
+                            let newWidth = img.width;
+                            let newHeight = img.height;
+                            const maintainAspect = document.getElementById('maintainAspect').checked;
+                            
+                            switch (resizeMode.value) {
+                                case 'percentage':
+                                    const percentage = parseInt(document.getElementById('resizePercentage').value) || 100;
+                                    newWidth = Math.round(img.width * percentage / 100);
+                                    newHeight = maintainAspect ? Math.round(img.height * percentage / 100) : newHeight;
+                                    break;
+                                case 'dimensions':
+                                    newWidth = parseInt(document.getElementById('resizeWidth').value) || img.width;
+                                    if (maintainAspect) {
+                                        newHeight = Math.round(img.height * (newWidth / img.width));
+                                    } else {
+                                        newHeight = parseInt(document.getElementById('resizeHeight').value) || img.height;
+                                    }
+                                    break;
+                                case 'longest-edge':
+                                    const longestEdge = Math.max(img.width, img.height);
+                                    const newLongestEdge = parseInt(document.getElementById('longestEdgeValue').value) || longestEdge;
+                                    const scale = newLongestEdge / longestEdge;
+                                    newWidth = Math.round(img.width * scale);
+                                    newHeight = Math.round(img.height * scale);
+                                    break;
+                            }
+                            
+                            // Create canvas with new dimensions
+                            const canvas = document.createElement('canvas');
+                            canvas.width = newWidth;
+                            canvas.height = newHeight;
+                            const ctx = canvas.getContext('2d');
+                            
+                            // Apply color profile (simplified for demo)
+                            if (colorProfile !== 'none') {
+                                // In a real app, you would apply proper color profile conversion
+                                ctx.fillStyle = 'white';
+                                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            }
+                            
+                            // Draw image (with resizing if needed)
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            
+                            // Convert to JPEG
+                            const mimeType = 'image/jpeg';
+                            let qualityOption = quality / 100;
+                            
+                            // Additional JPEG options (these would be used by a more advanced library)
+                            const jpegOptions = {
+                                quality: qualityOption,
+                                progressive: isProgressive,
+                                // These would be used by a library like MozJPEG
+                                chromaSubsampling: subsampling,
+                                dctMethod: dctMethod,
+                                // colorSpace: colorProfile === 'none' ? undefined : colorProfile
+                            };
+                            
+                            // Convert to JPEG (simplified - in a real app you might use a library like MozJPEG)
+                            canvas.toBlob((blob) => {
+                                const convertedFile = new File([blob], file.name.replace(/\.png$/i, '.jpg') || file.name + '.jpg', {
+                                    type: mimeType,
+                                    lastModified: Date.now()
+                                });
+                                
+                                resolve({
+                                    original: file,
+                                    converted: convertedFile,
+                                    originalSize: file.size,
+                                    convertedSize: blob.size,
+                                    width: newWidth,
+                                    height: newHeight,
+                                    quality: quality,
+                                    settings: {
+                                        progressive: isProgressive,
+                                        colorProfile: colorProfile,
+                                        subsampling: subsampling,
+                                        dctMethod: dctMethod
+                                    }
+                                });
+                            }, mimeType, qualityOption);
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            function addResultToUI(result, index) {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'bg-gray-50 p-4 rounded-lg';
+                resultItem.innerHTML = `
+                    <div class="flex flex-col md:flex-row md:items-center justify-between">
+                        <div class="flex items-center mb-2 md:mb-0 truncate">
+                            <i class="fas fa-file-image text-blue-500 mr-3 text-xl"></i>
+                            <div class="truncate">
+                                <div class="font-medium truncate">${result.converted.name}</div>
+                                <div class="text-sm text-gray-500">${result.width} × ${result.height} px</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="text-right">
+                                <div class="text-sm text-gray-500">${formatFileSize(result.originalSize)} → ${formatFileSize(result.convertedSize)}</div>
+                                <div class="text-sm">${Math.round((1 - result.convertedSize / result.originalSize) * 100)}% smaller</div>
+                            </div>
+                            <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded download-single" data-index="${index}">
+                                <i class="fas fa-download mr-2"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                `;
+                resultsList.appendChild(resultItem);
+                
+                // Add event listener to download button
+                resultItem.querySelector('.download-single').addEventListener('click', () => {
+                    downloadFile(result.converted);
+                });
+            }
+
+            function downloadFile(file) {
+                const url = URL.createObjectURL(file);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            function downloadAllFiles() {
+                if (convertedFiles.length === 0) return;
+                
+                // For multiple files, we might want to zip them first in a real app
+                // For this demo, we'll download them one by one
+                convertedFiles.forEach((result, index) => {
+                    // Small delay to avoid browser blocking multiple downloads
+                    setTimeout(() => {
+                        downloadFile(result.converted);
+                    }, index * 300);
+                });
+            }
+
+            function resetConverter() {
+                files = [];
+                convertedFiles = [];
+                fileInput.value = '';
+                fileList.classList.add('hidden');
+                previewContainer.innerHTML = `
+                    <div class="text-center text-gray-500">
+                        <i class="fas fa-image text-4xl mb-2"></i>
+                        <p>Image preview will appear here</p>
+                    </div>
+                `;
+                previewInfo.classList.add('hidden');
+                qualitySlider.value = 85;
+                qualityValue.textContent = '85%';
+                losslessCheckbox.checked = false;
+                progressiveCheckbox.checked = true;
+                convertBtn.disabled = true;
+                convertBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Convert All Files';
+                downloadAllBtn.classList.add('hidden');
+                resultsSection.classList.add('hidden');
+                
+                // Reset advanced options
+                document.getElementById('colorProfile').value = 'srgb';
+                document.getElementById('subsampling').value = '4:2:0';
+                document.getElementById('dctMethod').value = 'int';
+                resizeMode.value = 'none';
+                updateResizeUI();
+            }
+        });
+    </script>
+</body>
+</html>
